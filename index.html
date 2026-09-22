@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboNK Client</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; height: 100vh; background-color: #313338; color: #dbdee1; overflow: hidden; }
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #1e1f22; display: flex; align-items: center; justify-content: center; z-index: 999; }
+        .auth-box { background-color: #313338; padding: 40px; border-radius: 8px; width: 400px; text-align: center; }
+        .auth-box h2 { color: white; margin-bottom: 8px; }
+        .auth-box p { color: #b5bac1; font-size: 14px; margin-bottom: 20px; }
+        .auth-input { width: 100%; padding: 10px; background-color: #1e1f22; border: none; border-radius: 4px; color: white; font-size: 16px; margin-bottom: 10px; outline: none; }
+        .auth-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .auth-btn { flex: 1; padding: 12px; background-color: #5865f2; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .auth-btn.reg { background-color: #23a55a; }
+        .sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; border-right: 1px solid #1f2023; }
+        .app-header { padding: 20px; font-size: 18px; font-weight: bold; color: #ffffff; border-bottom: 1px solid #1f2023; text-align: center; }
+        .section-title { padding: 15px 10px 5px 15px; font-size: 12px; text-transform: uppercase; font-weight: bold; color: #949ba4; }
+        .scrollable-menu { flex: 1; overflow-y: auto; padding: 5px; }
+        .menu-item { display: flex; align-items: center; padding: 8px 10px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; color: #949ba4; }
+        .menu-item.active { background-color: #404249; color: #ffffff; }
+        .channel::before { content: "# "; font-weight: bold; color: #80848e; margin-right: 6px; }
+        .dm::before { content: "👤 "; font-size: 14px; margin-right: 6px; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
+        .chat-header { height: 60px; display: flex; align-items: center; padding: 0 20px; background-color: #313338; border-bottom: 1px solid #1f2023; font-weight: bold; color: #ffffff; }
+        .messages-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message { display: flex; align-items: flex-start; gap: 12px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #5865f2; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; }
+        .avatar.dm-avatar { background-color: #23a55a; }
+        .msg-content { display: flex; flex-direction: column; }
+        .msg-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .username { font-weight: 600; color: #f2f3f5; font-size: 15px; }
+        .timestamp { font-size: 12px; color: #949ba4; }
+        .text { color: #dbdee1; font-size: 15px; line-height: 1.4; word-break: break-word; }
+        .input-area { padding: 0 20px 24px 20px; background-color: #313338; }
+        .input-wrapper { display: flex; background-color: #383a40; border-radius: 8px; padding: 10px 15px; align-items: center; }
+        .message-input { flex: 1; background: none; border: none; outline: none; color: #dbdee1; font-size: 15px; }
+        .send-btn { background: #5865f2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2>Добро пожаловать</h2>
+            <p>Войдите или зарегистрируйтесь в TurboNK</p>
+            <input type="text" id="nickname-input" class="auth-input" placeholder="Введите ваш никнейм...">
+            <div class="auth-buttons">
+                <button class="auth-btn" onclick="handleAuth('!LOGIN')">Войти</button>
+                <button class="auth-btn reg" onclick="handleAuth('!REGISTER')">Создать</button>
+            </div>
+        </div>
+    </div>
+    <div class="sidebar">
+        <div class="app-header">⚡ TurboNK</div>
+        <div class="scrollable-menu">
+            <div class="section-title">Текстовые каналы</div>
+            <div class="menu-item channel active" id="item-general" onclick="switchChat('general', 'channel', 'общий')"><span>общий</span></div>
+            <div class="menu-item channel" id="item-dev" onclick="switchChat('dev', 'channel', 'разработка')"><span>разработка</span></div>
+            <div class="menu-item channel" id="item-flood" onclick="switchChat('flood', 'channel', 'флуд')"><span>флуд</span></div>
+            <div class="section-title">Личные сообщения</div>
+            <div class="menu-item dm" id="item-ivan" onclick="switchChat('ivan', 'dm', 'Иван')"><span>Иван</span></div>
+        </div>
+    </div>
+    <div class="chat-area">
+        <div class="chat-header" id="chat-title"># общий</div>
+        <div class="messages-container" id="messages-box"></div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="msg-field" class="message-input" placeholder="Написать..." onkeypress="handleKeyPress(event)">
+                <button class="send-btn" onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const PYTHON_SERVER_URL = "ВСТАВЬ_СЮДА_ССЫЛКУ"; 
+        let currentChatId = 'general', currentChatType = 'channel', currentMessages = [], myNickname = "";
+
+        async function handleAuth(commandType) {
+            const input = document.getElementById('nickname-input');
+            const name = input.value.trim();
+            if (!name) return alert("Введите никнейм!");
+            myNickname = name;
+            document.getElementById('auth-screen').style.display = 'none';
+            try {
+                await fetch(`${PYTHON_SERVER_URL}/api/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user: myNickname, text: commandType, chat_id: currentChatId })
+                });
+            } catch (e) { console.error("Ошибка подключения:", e); }
+            loadMessages();
+            setInterval(loadMessages, 2000);
+        }
+
+        async function loadMessages() {
+            if (!PYTHON_SERVER_URL || PYTHON_SERVER_URL.includes("ВСТАВЬ_СЮДА")) return;
+            try {
+                const response = await fetch(`${PYTHON_SERVER_URL}/api/messages?chat_id=${currentChatId}`);
+                if (response.ok) { currentMessages = await response.json(); renderMessages(); }
+            } catch (e) { console.error("Ошибка обновления:", e); }
+        }
+
+        function renderMessages() {
+            const box = document.getElementById('messages-box');
+            box.innerHTML = '';
+            currentMessages.forEach(msg => {
+                const isMe = msg.user === myNickname;
+                const cls = currentChatType === 'dm' && !isMe ? 'avatar dm-avatar' : 'avatar';
+                box.innerHTML += `<div class="message"><div class="${cls}">${msg.user.charAt(0).toUpperCase()}</div><div class="msg-content"><div class="msg-meta"><span class="username" style="${isMe ? 'color: #5865f2;' : ''}">${msg.user}</span><span class="timestamp">${msg.time || '00:00'}</span></div><div class="text">${msg.text}</div></div></div>`;
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function switchChat(chatId, type, displayName) {
+            currentChatId = chatId; currentChatType = type;
+            document.getElementById('chat-title').innerText = (type === 'channel' ? '# ' : '👤 ') + displayName;
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            document.getElementById('item-' + chatId).classList.add('active');
+            loadMessages();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msg-field');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            try {
+                await fetch(`${PYTHON_SERVER_URL}/api/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user: myNickname, text: text, chat_id: currentChatId })
+                });
+                loadMessages();
+            } catch (e) { console.error("Ошибка отправки:", e); }
+        }
+
+        function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+    </script>
+</body>
+</html>
